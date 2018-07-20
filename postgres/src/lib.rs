@@ -1112,7 +1112,7 @@ impl Connection {
     /// use postgres::params::{ConnectParams, Host};
     /// # use std::path::PathBuf;
     ///
-    /// # #[cfg(unix)]
+    /// # #[cfg(all(unix, feature="uds"))]
     /// # fn f() {
     /// # let some_crazy_path = PathBuf::new();
     /// let params = ConnectParams::builder()

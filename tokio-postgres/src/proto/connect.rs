@@ -11,7 +11,7 @@ use tokio_io::io::{flush, read_exact, write_all, Flush, ReadExact, WriteAll};
 use tokio_tcp::{self, TcpStream};
 use tokio_timer::Delay;
 
-#[cfg(unix)]
+#[cfg(all(unix, feature="uds"))]
 use tokio_uds::{self, UnixStream};
 
 use error::{self, Error};
@@ -27,8 +27,8 @@ lazy_static! {
 #[derive(StateMachineFuture)]
 pub enum Connect {
     #[state_machine_future(start)]
-    #[cfg_attr(unix, state_machine_future(transitions(ResolvingDns, ConnectingUnix)))]
-    #[cfg_attr(not(unix), state_machine_future(transitions(ResolvingDns)))]
+    #[cfg_attr(all(unix, feature="usd"), state_machine_future(transitions(ResolvingDns, ConnectingUnix)))]
+    #[cfg_attr(any(not(unix), not(feature="usd")), state_machine_future(transitions(ResolvingDns)))]
     Start { params: ConnectParams, tls: TlsMode },
     #[state_machine_future(transitions(ConnectingTcp))]
     ResolvingDns {
@@ -45,7 +45,7 @@ pub enum Connect {
         params: ConnectParams,
         tls: TlsMode,
     },
-    #[cfg(unix)]
+    #[cfg(all(unix, feature="uds"))]
     #[state_machine_future(transitions(PreparingSsl))]
     ConnectingUnix {
         future: tokio_uds::ConnectFuture,
@@ -106,7 +106,7 @@ impl PollConnect for Connect {
                 tls: state.tls,
                 timeout,
             }),
-            #[cfg(unix)]
+            #[cfg(all(unix, feature="uds"))]
             Host::Unix(mut path) => {
                 path.push(format!(".s.PGSQL.{}", port));
                 transition!(ConnectingUnix {
@@ -116,6 +116,10 @@ impl PollConnect for Connect {
                     tls: state.tls,
                 })
             }
+            #[cfg(any(not(unix), not(feature="uds")))]
+            Host::Unix(..) => Err(io::Error::new(
+                io::ErrorKind::Other,
+                "unix sockets are not supported on this system").into())
         }
     }
 
@@ -185,7 +189,7 @@ impl PollConnect for Connect {
         })
     }
 
-    #[cfg(unix)]
+    #[cfg(all(unix, feature="uds"))]
     fn poll_connecting_unix<'a>(
         state: &'a mut RentToOwn<'a, ConnectingUnix>,
     ) -> Poll<AfterConnectingUnix, Error> {

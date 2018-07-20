@@ -209,7 +209,7 @@ fn open_socket(params: &ConnectParams) -> Result<Socket> {
                 })
                 .into())
         }
-        #[cfg(unix)]
+        #[cfg(all(unix, feature="uds"))]
         Host::Unix(ref path) => {
             let path = path.join(&format!(".s.PGSQL.{}", port));
             let socket = Socket::new(Domain::unix(), Type::stream(), None)?;
@@ -217,7 +217,7 @@ fn open_socket(params: &ConnectParams) -> Result<Socket> {
             socket.connect(&addr)?;
             Ok(socket)
         }
-        #[cfg(not(unix))]
+        #[cfg(any(not(unix), not(feature="uds")))]
         Host::Unix(..) => Err(io::Error::new(
             io::ErrorKind::InvalidInput,
             "unix sockets are not supported on this system",

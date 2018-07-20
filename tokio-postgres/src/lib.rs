@@ -18,7 +18,7 @@ extern crate log;
 #[macro_use]
 extern crate state_machine_future;
 
-#[cfg(unix)]
+#[cfg(all(unix, feature="uds"))]
 extern crate tokio_uds;
 
 use bytes::Bytes;
